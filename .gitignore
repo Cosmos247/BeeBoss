@@ -1,0 +1,22 @@
+# Secrets
+.env
+
+# Pyrogram session = full Telegram account access — NEVER commit
+*.session
+*.session-journal
+
+# Local data
+*.db
+config.json
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
