@@ -188,6 +188,14 @@ def process_member_stats(current_data, save_mode=False):
     return report_lines, baseline_date
 
 # --- ФУНКЦІЯ ЗБОРУ РЕЙТИНГУ ---
+async def _bail_if_in_battle(message, target_chat_id):
+    if message and message.text and "Ви в бою" in message.text:
+        if target_chat_id:
+            await app.send_message(target_chat_id, "⚔️ Зараз я в бою, спробуй пізніше.")
+        print("⚔️ В бою — пропускаю запит")
+        return True
+    return False
+
 async def collect_ranking_data(save_mode=False, target_chat_id=None):
     try:
         print(f"🤖 Починаю збір рейтингу...")
@@ -199,6 +207,8 @@ async def collect_ranking_data(save_mode=False, target_chat_id=None):
         await asyncio.sleep(3)
         
         async for message in app.get_chat_history(game_bot_username, limit=1):
+            if await _bail_if_in_battle(message, target_chat_id):
+                return
             if message.reply_markup and message.reply_markup.inline_keyboard:
                 for row in message.reply_markup.inline_keyboard:
                     for btn in row:
@@ -208,6 +218,8 @@ async def collect_ranking_data(save_mode=False, target_chat_id=None):
                             break
 
         async for message in app.get_chat_history(game_bot_username, limit=1):
+            if await _bail_if_in_battle(message, target_chat_id):
+                return
             text = message.text
             lines = text.split('\n')
             matches = []
@@ -257,6 +269,8 @@ async def collect_members_data(save_mode=False, target_chat_id=None):
         await asyncio.sleep(3)
 
         async for message in app.get_chat_history(game_bot_username, limit=1):
+            if await _bail_if_in_battle(message, target_chat_id):
+                return
             text = message.text or ""
             blocks = re.split(r"—{3,}", text)
             matches = []
