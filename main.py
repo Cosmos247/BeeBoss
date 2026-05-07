@@ -129,9 +129,15 @@ def process_guild_stats(current_data, save_mode=False):
             if g1_old is not None and g2_old is not None:
                 gap_old = g1_old - g2_old
                 delta = gap_now - gap_old
-                report_lines.append(f"📏 {g1_short} ↔ {g2_short}: {gap_now} (було {gap_old}, {delta:+d})")
+                if delta < 0:
+                    delta_str = f"🟢⬆ {abs(delta)}"
+                elif delta > 0:
+                    delta_str = f"🔴⬇ {delta}"
+                else:
+                    delta_str = "0"
+                report_lines.append(f"{g1_short} ↔ {g2_short}: {gap_now} (було {gap_old}, {delta_str})")
             else:
-                report_lines.append(f"📏 {g1_short} ↔ {g2_short}: {gap_now}")
+                report_lines.append(f"{g1_short} ↔ {g2_short}: {gap_now}")
 
     conn.close()
     return report_lines, baseline_date
