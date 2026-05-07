@@ -23,7 +23,7 @@ except KeyError as e:
 game_bot_username = os.environ.get("GAME_BOT_USERNAME", "ostromag_game_bot")
 
 CONFIG_PATH = Path("config.json")
-DEFAULT_BASELINE_TIME = "16:10"
+DEFAULT_BASELINE_TIME = "12:00"
 DIFF_COOLDOWN_SECONDS = 5 * 60
 SCHED_JOB_ID = "baseline_snapshot"
 
@@ -44,6 +44,18 @@ last_chlen_call = 0.0
 
 ROLE_EMOJIS = ["👑", "⭐", "👤"]
 STATUS_EMOJIS = ["🟢", "⚪", "🔴", "🟡"]
+
+TOP_GUILD_PAIR = [
+    ("Секта Буржуазної Утопії", "СБУ"),
+    ("Керовані Авіа Бджоли", "КАБ"),
+]
+
+def _find_guild_glory(full_name, items):
+    target = full_name.lower()
+    for key, glory in items:
+        if target in key.lower():
+            return int(glory)
+    return None
 
 def _strip_member_prefix(name_part):
     s = name_part
@@ -102,6 +114,24 @@ def process_guild_stats(current_data, save_mode=False):
                 report_lines.append(f"{marker} {display} ({current_glory}): {diff:+d}")
             else:
                 report_lines.append(f"{marker} {display} ({current_glory}): вперше в ТОП")
+
+        # Розрив між топ-парою (СБУ ↔ КАБ)
+        current_items = [(key, glory) for key, _, glory in sorted_data]
+        history_items = list(history.items())
+        (g1_full, g1_short), (g2_full, g2_short) = TOP_GUILD_PAIR
+        g1_now = _find_guild_glory(g1_full, current_items)
+        g2_now = _find_guild_glory(g2_full, current_items)
+        if g1_now is not None and g2_now is not None:
+            gap_now = g1_now - g2_now
+            g1_old = _find_guild_glory(g1_full, history_items)
+            g2_old = _find_guild_glory(g2_full, history_items)
+            report_lines.append("")
+            if g1_old is not None and g2_old is not None:
+                gap_old = g1_old - g2_old
+                delta = gap_now - gap_old
+                report_lines.append(f"📏 {g1_short} ↔ {g2_short}: {gap_now} (було {gap_old}, {delta:+d})")
+            else:
+                report_lines.append(f"📏 {g1_short} ↔ {g2_short}: {gap_now}")
 
     conn.close()
     return report_lines, baseline_date
