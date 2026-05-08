@@ -60,8 +60,8 @@ def save_config(cfg):
 
 config = load_config()
 last_diff_call = 0.0
-last_chlen_call = 0.0
-last_chlenfab_call = 0.0
+last_kab_call = 0.0
+last_fab_call = 0.0
 
 ROLE_EMOJIS = ["👑", "⭐", "👤"]
 STATUS_EMOJIS = ["🟢", "⚪", "🔴", "🟡"]
@@ -447,12 +447,12 @@ async def auto_report_task():
     async def run_one(name, silent):
         if name == "diff":
             return await collect_ranking_data(save_mode=False, target_chat_id=chat_id, silent_battle=silent)
-        if name == "chlen":
+        if name == "kab":
             return await collect_members_data(app_kab, "КАБ", save_mode=False, target_chat_id=chat_id, silent_battle=silent)
-        if name == "chlenfab":
+        if name == "fab":
             return await collect_members_data(app_fab, "ФАБ", save_mode=False, target_chat_id=chat_id, reply_client=app_kab, silent_battle=silent)
 
-    pending = ["diff", "chlen", "chlenfab"]
+    pending = ["diff", "kab", "fab"]
     failed = []
     for name in pending:
         result = await run_one(name, silent=True)
@@ -482,30 +482,30 @@ async def handle_diff(client, message):
     last_diff_call = now
     await collect_ranking_data(save_mode=False, target_chat_id=message.chat.id)
 
-@app_kab.on_message(filters.command("chlen", prefixes="/"))
-async def handle_chlen(client, message):
-    global last_chlen_call
+@app_kab.on_message(filters.command("kab", prefixes="/"))
+async def handle_kab(client, message):
+    global last_kab_call
     now = time.monotonic()
-    elapsed = now - last_chlen_call
+    elapsed = now - last_kab_call
     if elapsed < DIFF_COOLDOWN_SECONDS:
         wait = int(DIFF_COOLDOWN_SECONDS - elapsed)
         m, s = divmod(wait, 60)
-        await message.reply(f"⏳ Зачекай ще {m}хв {s}с перед наступним /chlen")
+        await message.reply(f"⏳ Зачекай ще {m}хв {s}с перед наступним /kab")
         return
-    last_chlen_call = now
+    last_kab_call = now
     await collect_members_data(app_kab, "КАБ", save_mode=False, target_chat_id=message.chat.id)
 
-@app_kab.on_message(filters.command("chlenfab", prefixes="/"))
-async def handle_chlenfab(client, message):
-    global last_chlenfab_call
+@app_kab.on_message(filters.command("fab", prefixes="/"))
+async def handle_fab(client, message):
+    global last_fab_call
     now = time.monotonic()
-    elapsed = now - last_chlenfab_call
+    elapsed = now - last_fab_call
     if elapsed < DIFF_COOLDOWN_SECONDS:
         wait = int(DIFF_COOLDOWN_SECONDS - elapsed)
         m, s = divmod(wait, 60)
-        await message.reply(f"⏳ Зачекай ще {m}хв {s}с перед наступним /chlenfab")
+        await message.reply(f"⏳ Зачекай ще {m}хв {s}с перед наступним /fab")
         return
-    last_chlenfab_call = now
+    last_fab_call = now
     await collect_members_data(app_fab, "ФАБ", save_mode=False, target_chat_id=message.chat.id, reply_client=app_kab)
 
 @app_kab.on_message(filters.command("settime", prefixes="/") & filters.me)
