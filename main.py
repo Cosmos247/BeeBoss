@@ -323,36 +323,58 @@ async def collect_ranking_data(save_mode=False, target_chat_id=None, silent_batt
                 fab_data = (i, key, display, int(glory))
                 break
 
-        if fab_data is None and page1_msg and page1_msg.reply_markup and page1_msg.reply_markup.inline_keyboard:
-            next_btn_data = None
-            for row in page1_msg.reply_markup.inline_keyboard:
-                for btn in row:
-                    btxt = btn.text or ""
-                    if ("▶" in btxt or "➡" in btxt) and "◀" not in btxt and "⬅" not in btxt:
-                        next_btn_data = btn.callback_data
-                        break
-                if next_btn_data:
+        if fab_data is None and page1_msg:
+            current_msg = page1_msg
+            for _ in range(3):  # перебираємо до 3 наступних сторінок
+                if fab_data is not None:
                     break
-            if next_btn_data:
-                await app_kab.request_callback_answer(page1_msg.chat.id, page1_msg.id, next_btn_data)
-                await asyncio.sleep(3)
-                async for page2_msg in app_kab.get_chat_history(game_bot_username, limit=1):
-                    if await _bail_if_in_battle(page2_msg, target_chat_id, app_kab, silent=silent_battle):
-                        return "battle"
-                    text2 = page2_msg.text or ""
-                    for line in text2.split('\n'):
-                        line = line.strip()
-                        if FAB_FULL_NAME in line:
-                            pos_m = re.match(r"^(\d+)\.\s*", line)
-                            glory_m = re.search(r"\((\d+)\)\s*$", line)
-                            if pos_m and glory_m:
-                                pos = int(pos_m.group(1))
-                                fab_glory = int(glory_m.group(1))
-                                display_part = line[pos_m.end():glory_m.start()].strip()
-                                name_match = re.search(r"[A-Za-zА-Яа-яІіЇїЄєҐґ].*", display_part)
-                                key = name_match.group(0).strip() if name_match else FAB_FULL_NAME
-                                fab_data = (pos, key, display_part, fab_glory)
+                next_btn_data = None
+                if current_msg.reply_markup and current_msg.reply_markup.inline_keyboard:
+                    for row in current_msg.reply_markup.inline_keyboard:
+                        for btn in row:
+                            btxt = btn.text or ""
+                            if ("▶" in btxt or "➡" in btxt) and "◀" not in btxt and "⬅" not in btxt:
+                                next_btn_data = btn.callback_data
+                                break
+                        if next_btn_data:
                             break
+                if not next_btn_data:
+                    break
+
+                prev_text = current_msg.text or ""
+                await app_kab.request_callback_answer(current_msg.chat.id, current_msg.id, next_btn_data)
+
+                # Polling до 6с: чекаємо на оновлення повідомлення (edit message)
+                new_msg = None
+                for _ in range(6):
+                    await asyncio.sleep(1)
+                    async for poll_msg in app_kab.get_chat_history(game_bot_username, limit=1):
+                        if await _bail_if_in_battle(poll_msg, target_chat_id, app_kab, silent=silent_battle):
+                            return "battle"
+                        if (poll_msg.text or "") != prev_text:
+                            new_msg = poll_msg
+                            break
+                    if new_msg:
+                        break
+
+                if not new_msg:
+                    break
+
+                current_msg = new_msg
+                text2 = new_msg.text or ""
+                for line in text2.split('\n'):
+                    line = line.strip()
+                    if FAB_FULL_NAME in line:
+                        pos_m = re.match(r"^(\d+)\.\s*", line)
+                        glory_m = re.search(r"\((\d+)\)\s*$", line)
+                        if pos_m and glory_m:
+                            pos = int(pos_m.group(1))
+                            fab_glory = int(glory_m.group(1))
+                            display_part = line[pos_m.end():glory_m.start()].strip()
+                            name_match = re.search(r"[A-Za-zА-Яа-яІіЇїЄєҐґ].*", display_part)
+                            key = name_match.group(0).strip() if name_match else FAB_FULL_NAME
+                            fab_data = (pos, key, display_part, fab_glory)
+                        break
 
         if matches:
             results, baseline_date = process_guild_stats(matches, fab_data, save_mode=save_mode)
